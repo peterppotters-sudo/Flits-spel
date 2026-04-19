@@ -72,14 +72,14 @@
         }
         @keyframes fillProgress { from { width: 0%; } to { width: 100%; } }
 
-        /* --- STABLE STACKED TOP BAR --- */
+        /* --- STABLE TOP BAR --- */
         #top-bar {
             position: relative; z-index: 100;
             background: rgba(13, 17, 23, 0.95); 
             padding: 8px 15px;
             border-bottom: 1px solid #30363d;
             display: grid;
-            grid-template-columns: 1fr 2fr 1fr;
+            grid-template-columns: 1fr 1.5fr 1fr;
             align-items: center;
         }
 
@@ -88,11 +88,14 @@
         .align-center { align-items: center; }
         .align-right { align-items: flex-end; }
 
+        /* Knoppen layout links */
+        .btn-row { display: flex; gap: 4px; width: 100%; }
         .icon-btn {
             background: #21262d; border: 1px solid #30363d; color: #c9d1d9;
-            padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;
-            width: 85px; text-align: center;
+            padding: 6px 4px; border-radius: 4px; cursor: pointer; font-size: 11px;
+            text-align: center; flex: 1;
         }
+        .full-width-btn { width: 100%; flex: none; }
 
         #timer-display {
             font-family: monospace;
@@ -103,7 +106,7 @@
             padding: 2px 10px;
             border-radius: 5px;
             line-height: 1;
-            opacity: 0; /* Begint onzichtbaar maar neemt wel ruimte in */
+            opacity: 0;
             transition: opacity 0.3s;
         }
 
@@ -133,7 +136,21 @@
             cursor: pointer; font-size: 9px;
         }
 
-        /* REST LAYOUT */
+        /* WOORDENLIJSTEN MODAL */
+        #settings-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(11, 15, 25, 0.98);
+            display: none; flex-direction: column;
+            z-index: 2000; padding: 20px; box-sizing: border-box;
+            overflow-y: auto;
+        }
+        .settings-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #30363d; padding-bottom: 10px;}
+        .close-btn { background: #da3633; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold;}
+        .list-section { margin-bottom: 25px; background: #1c2128; padding: 15px; border-radius: 10px; border: 1px solid #30363d;}
+        .list-title { color: #58a6ff; font-size: 18px; font-weight: bold; margin-bottom: 10px; display: block;}
+        .list-content { color: #8b949e; font-size: 14px; line-height: 1.6; word-break: break-all; }
+
+        /* MAIN CONTENT */
         #main-content {
             flex: 1; display: flex; flex-direction: column;
             align-items: center; justify-content: center;
@@ -175,7 +192,7 @@
             border-top: 1px solid #333; z-index: 200; box-sizing: border-box;
         }
         .mode-selector { display: flex; background: #1a1a1a; padding: 4px; border-radius: 10px; margin-bottom: 10px; }
-        .button-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+        .button-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
         .optie-btn { padding: 12px 0; background: #2d2d2d; color: #aaa; border: 1px solid #444; border-radius: 8px; font-size: 11px; cursor: pointer; }
         .optie-btn.active { border-color: #58a6ff; background: #234d77; color: white; }
         .start-btn-big { padding: 18px; font-size: 22px; font-weight: bold; background: #238636; color: white; border: none; border-radius: 12px; width: 100%; cursor: pointer; }
@@ -213,10 +230,32 @@
     <canvas id="confetti-canvas"></canvas>
     <div id="ruler"></div>
 
+    <div id="settings-overlay">
+        <div class="settings-header">
+            <h2 style="margin:0;">Woordenlijsten</h2>
+            <button class="close-btn" onclick="toggleSettings()">Sluiten ✕</button>
+        </div>
+        <div class="list-section">
+            <span class="list-title">MKM Woorden</span>
+            <div id="view-mkm" class="list-content"></div>
+        </div>
+        <div class="list-section">
+            <span class="list-title">2 Letter & Lidwoorden</span>
+            <div id="view-twee" class="list-content"></div>
+        </div>
+        <div class="list-section">
+            <span class="list-title">B / D Woorden</span>
+            <div id="view-bd" class="list-content"></div>
+        </div>
+    </div>
+
     <div id="top-bar">
         <div class="top-column align-left">
-            <button class="icon-btn" onclick="toggleFS()">Volledig ⛶</button>
-            <button class="icon-btn" onclick="location.reload()">Reset ⟳</button>
+            <div class="btn-row">
+                <button class="icon-btn" onclick="toggleFS()">Volledig ⛶</button>
+                <button class="icon-btn" onclick="location.reload()">Reset ⟳</button>
+            </div>
+            <button class="icon-btn full-width-btn" onclick="toggleSettings()">Lijsten ☰</button>
         </div>
         
         <div class="top-column align-center">
@@ -264,29 +303,46 @@
             <button id="m-t" class="optie-btn" style="flex:1; border:none;" onclick="switchMode('toets')">TOETS</button>
         </div>
         <div class="button-grid" id="lijst-box">
-            <button class="optie-btn active" onclick="setLijst('kort', this)">Kort</button>
+            <button class="optie-btn active" onclick="setLijst('mkm', this)">MKM</button>
+            <button class="optie-btn" onclick="setLijst('tweeLetter', this)">2 Letter</button>
             <button class="optie-btn" onclick="setLijst('bd', this)">B / D</button>
-            <button class="optie-btn" onclick="setLijst('lang', this)">5 Letter</button>
-            <button class="optie-btn" onclick="setLijst('klanken', this)">Klanken</button>
         </div>
         <button id="start-btn-main" class="start-btn-big" onclick="startNieuwWoord()">START</button>
     </div>
 
     <script>
-        const origineleIcoontjes = ["🚀", "💎", "🍎", "👾", "🦄", "🦁", "🦖", "🍦", "🍕", "⚽", "🚗", "🚁", "🎈", "🎁", "🎨", "🎸", "🦒", "🐘", "🐧", "🐢", "🍩", "🍔", "🍿", "🍓", "🍉", "🌈", "☀️", "🌙", "⭐", "⚡", "🚲", "🚢", "🚜", "🚒", "🚑", "🛸", "🤖", "👻", "👑", "🍭", "🦋", "🐝", "🐳", "🐵", "🐼", "🥨", "🥇", "🛹", "🎮", "🧸"];
+        const origineleIcoontjes = ["🚀", "💎", "🍎", "👾", "🦄", "🦁", "REX", "🍦", "🍕", "⚽", "🚗", "🚁", "🎈", "🎁", "🎨", "🎸", "🦒", "🐘", "🐧", "🐢", "🍩", "🍔", "🍿", "🍓", "🍉", "🌈", "☀️", "🌙", "⭐", "⚡", "🚲", "🚢", "🚜", "🚒", "🚑", "🛸", "🤖", "👻", "👑", "🍭", "🦋", "🐝", "🐳", "🐵", "🐼", "🥨", "🥇", "🛹", "🎮", "🧸"];
         let beschikbareIcoontjes = [...origineleIcoontjes];
         let verdiendeLijst = [];
 
         const lijsten = {
-            kort: ["de", "het", "een", "aap", "bak", "bal", "bes", "bok", "bom", "bos", "dag", "dam", "den", "dik", "dop", "fles", "gum", "haan", "heg", "hek", "hok", "hut", "jas", "kam", "kan", "kar", "kat", "kip", "koe", "koek", "kop", "lam", "les", "lip", "lot", "maan", "man", "mat", "mes", "mug", "mus", "nat", "nek", "net", "oom", "oog", "oor", "pan", "pen", "pop", "put", "raam", "rek", "rem", "rok", "rol", "roos", "sap", "sok", "tak", "tas", "ton", "top", "val", "vat", "ver", "vis", "vos", "wal", "web", "weg", "wig", "wip", "wol", "zak", "zee", "zeep", "zon"],
-            bd: ["bak", "bal", "bas", "bel", "bes", "bij", "bik", "bil", "bok", "bol", "bom", "bos", "bus", "boot", "bank", "berg", "bril", "boek", "boos", "boom", "dag", "dal", "dam", "dan", "dat", "dek", "den", "denk", "der", "des", "dik", "dip", "dit", "doe", "dof", "dog", "dok", "dol", "don", "dop", "dor", "dot", "dorp", "doos", "duif", "dier", "duur", "droom", "drop"],
-            lang: ["blauw", "brief", "brood", "vloer", "feest", "fruit", "groen", "groot", "klein", "krant", "plant", "prijs", "schat", "schip", "slang", "stoel", "stout", "tafel", "trein", "vlieg", "vraag", "vrouw", "water", "zwart", "stuur", "staart", "snoep", "schelp", "schaap"],
-            klanken: ["buik", "duif", "huis", "muis", "tuin", "vuist", "uil", "ruit", "snuit", "spruit", "kluis", "struik", "deur", "neus", "reus", "jeuk", "beuk", "kleur", "geur", "steun", "deuk", "leuk", "speur", "pauw", "saus", "touw", "woud", "koud", "zout", "mouw", "bouw", "kauw", "paus", "kous", "bout", "pijp", "wijk", "trein", "geit", "klei", "ei", "bij", "rijst", "ijs", "meid", "reis", "zeil", "dweil", "prijs", "dier", "mier", "bier", "voet", "boek", "koek", "zoek", "soep", "doel", "doos", "stoel", "koel", "vlieg", "riet", "wiel", "dief", "hoed", "doek"]
+            mkm: ["aap", "bak", "bal", "bes", "bok", "bom", "bos", "dag", "dam", "den", "dik", "dop", "gum", "heg", "hek", "hok", "hut", "jas", "kam", "kan", "kar", "kat", "kip", "koe", "kop", "lam", "les", "lip", "lot", "man", "mat", "mes", "mug", "mus", "nat", "nek", "net", "oom", "oog", "oor", "pan", "pen", "pop", "put", "rek", "rem", "rok", "rol", "sap", "sok", "tak", "tas", "ton", "top", "val", "vat", "ver", "vis", "vos", "wal", "web", "weg", "wig", "wip", "wol", "zak", "zee", "zon"],
+            tweeLetter: ["de", "het", "een", "ga", "nu", "op", "af", "in", "te", "na", "ja", "om", "zo", "pa", "ma", "er", "is", "of", "ik", "je", "we", "ze", "bij", "uw", "ei", "ui"],
+            bd: ["bak", "bal", "bas", "bel", "bes", "bik", "bil", "bok", "bol", "bom", "bos", "bus", "bank", "berg", "bril", "boek", "boos", "boom", "dag", "dal", "dam", "dan", "dat", "dek", "den", "dik", "dip", "dit", "doe", "dof", "dog", "dok", "dol", "don", "dop", "dor", "dot", "dorp", "doos", "duif", "dier", "duur", "drop", "band", "blad", "bed", "bad", "bod", "bied", "daal", "deel", "doel", "duin", "dauw"]
         };
 
-        let mode = 'normaal', huidigeLijst = lijsten.kort, uniekeToetsLijst = [], woordenTeller = 0, goedTeller = 0;
+        let mode = 'normaal', huidigeLijst = lijsten.mkm, uniekeToetsLijst = [], woordenTeller = 0, goedTeller = 0;
         let timerGestart = false, interval, resterendeTijd = 600, geschiedenis = [];
         let startTijdMS = 0, huidigFlitsWoord = "";
+
+        document.getElementById('view-mkm').innerText = lijsten.mkm.join(', ');
+        document.getElementById('view-twee').innerText = lijsten.tweeLetter.join(', ');
+        document.getElementById('view-bd').innerText = lijsten.bd.join(', ');
+
+        function toggleSettings() {
+            const overlay = document.getElementById('settings-overlay');
+            overlay.style.display = (overlay.style.display === 'flex') ? 'none' : 'flex';
+        }
+
+        function toggleFS() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(e => {
+                    console.log("Fullscreen failed: " + e.message);
+                });
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
 
         function generateStars() {
             const container = document.getElementById('stars-container');
@@ -300,11 +356,6 @@
                 s.style.animationDelay = Math.random() * 5 + 's';
                 container.appendChild(s);
             }
-        }
-
-        function toggleFS() {
-            if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-            else if (document.exitFullscreen) document.exitFullscreen();
         }
 
         function switchMode(m) {
@@ -342,12 +393,6 @@
             const sec = resterendeTijd % 60;
             document.getElementById('timer-display').innerText = 
                 `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-        }
-
-        function updateCounters() {
-            if (mode === 'normaal') {
-                document.getElementById('word-counter-display').innerText = `Woorden: ${woordenTeller}`;
-            }
         }
 
         function startNieuwWoord() {
@@ -406,7 +451,7 @@
                 if (mode === 'normaal') {
                     document.getElementById('btn-herhaal').style.display = 'block';
                     woordenTeller++;
-                    updateCounters();
+                    document.getElementById('word-counter-display').innerText = `Woorden: ${woordenTeller}`;
                     if (woordenTeller % 10 === 0) spawnReward();
                     document.getElementById('start-btn-main').disabled = false;
                     document.getElementById('start-btn-main').innerText = "VOLGENDE";
@@ -507,19 +552,15 @@
                 vx: Math.random() * 4 - 2, vy: Math.random() * 5 + 2, rotation: Math.random() * 360, 
                 rVel: Math.random() * 10 - 5, wMod: Math.random() * 2 
             }));
-            let recycling = true, active = true;
             function draw() {
-                if (!active) return;
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 particles.forEach(p => {
-                    if (p.y > canvas.height + 20) { if (recycling) { p.y = -Math.random() * 50 - 20; p.x = Math.random() * canvas.width; } else return; }
                     p.y += p.vy; p.x += p.vx; p.rotation += p.rVel;
                     ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rotation * Math.PI / 180);
                     ctx.fillStyle = p.color; ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h); ctx.restore();
                 });
                 requestAnimationFrame(draw);
             }
-            setTimeout(() => { recycling = false; }, 8000);
             draw();
         }
 
