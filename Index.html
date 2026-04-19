@@ -1,0 +1,529 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lees-Flitser: Pro</title>
+    <style>
+        html, body {
+            height: 100%; height: 100dvh;
+            margin: 0; padding: 0; overflow: hidden;
+            background-color: #0b0f19;
+            color: #ffffff;
+            font-family: sans-serif;
+        }
+
+        /* --- MAGIC STARS BACKGROUND --- */
+        #stars-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0; pointer-events: none;
+        }
+
+        .star {
+            position: absolute; 
+            background-color: rgba(230, 230, 230, 0.4);
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+            animation: twinkle infinite alternate;
+        }
+        .star.sm { width: 6px; height: 6px; }
+        .star.md { width: 10px; height: 10px; }
+        .star.lg { width: 15px; height: 15px; }
+
+        @keyframes twinkle {
+            0% { opacity: 0.1; transform: scale(0.8); }
+            100% { opacity: 0.6; transform: scale(1.1); }
+        }
+
+        /* BELONINGEN */
+        .beloning-icoon {
+            position: fixed; font-size: 40px; z-index: 5;
+            user-select: none; pointer-events: none;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* PROGRESSIE & WOORD GROEP */
+        #woord-groep {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            padding: 5px 0;
+        }
+
+        .progress-wrapper {
+            height: 4px; background: rgba(255,255,255,0.1);
+            border-radius: 2px; position: relative;
+            visibility: hidden; 
+            margin: 2px 0;
+            width: 100px;
+        }
+        .progress-bar {
+            height: 100%; width: 0%; background: #58a6ff; 
+            border-radius: 2px; position: relative;
+        }
+        .progress-arrow {
+            position: absolute; right: -20px; top: -16px;
+            font-size: 34px; color: #58a6ff; line-height: 1;
+        }
+        @keyframes fillProgress { from { width: 0%; } to { width: 100%; } }
+
+        /* --- STABLE STACKED TOP BAR --- */
+        #top-bar {
+            position: relative; z-index: 100;
+            background: rgba(13, 17, 23, 0.95); 
+            padding: 8px 15px;
+            border-bottom: 1px solid #30363d;
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            align-items: center;
+        }
+
+        .top-column { display: flex; flex-direction: column; gap: 6px; }
+        .align-left { align-items: flex-start; }
+        .align-center { align-items: center; }
+        .align-right { align-items: flex-end; }
+
+        .icon-btn {
+            background: #21262d; border: 1px solid #30363d; color: #c9d1d9;
+            padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;
+            width: 85px; text-align: center;
+        }
+
+        #timer-display {
+            font-family: monospace;
+            font-size: 22px;
+            color: #ff7b72;
+            font-weight: bold;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 2px 10px;
+            border-radius: 5px;
+            line-height: 1;
+            opacity: 0; /* Begint onzichtbaar maar neemt wel ruimte in */
+            transition: opacity 0.3s;
+        }
+
+        .mini-settings { display: flex; gap: 8px; font-size: 10px; color: #8b949e; }
+        .mini-settings input { 
+            background: #0d1117; border: 1px solid #30363d; color: #58a6ff; 
+            width: 35px; border-radius: 3px; text-align: center; font-size: 10px;
+            padding: 1px;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 95px;
+            text-align: center;
+        }
+        #reward-counter { color: #d29922; margin-bottom: 2px; }
+        #word-counter-display { color: #58a6ff; }
+
+        #stop-knop {
+            margin-top: 4px; padding: 4px 10px; border-radius: 4px; border: none; 
+            background: #8e1519; color: white; font-weight: bold;
+            cursor: pointer; font-size: 9px;
+        }
+
+        /* REST LAYOUT */
+        #main-content {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            width: 100%; height: 60vh; position: relative; z-index: 10;
+        }
+
+        #woord { 
+            font-size: 16vw; font-weight: 800; color: #58a6ff; 
+            text-align: center; text-shadow: 0 0 20px rgba(0,0,0,0.8);
+            line-height: 1;
+            z-index: 20; white-space: nowrap;
+        }
+
+        #btn-herhaal {
+            margin-top: 20px; padding: 10px 20px; 
+            background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.8); 
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px;
+            font-size: 14px; cursor: pointer; display: none; z-index: 30;
+            opacity: 0.5;
+        }
+
+        #actie-container {
+            position: fixed; bottom: 45%; left: 0; width: 100%;
+            display: flex; justify-content: space-evenly; align-items: center;
+            z-index: 110; pointer-events: none;
+        }
+        .toets-btn {
+            pointer-events: auto; display: none; padding: 20px 0; 
+            width: 40%; border-radius: 15px; font-size: 24px; 
+            font-weight: bold; border: none; color: white;
+            box-shadow: 0 6px rgba(0,0,0,0.3);
+        }
+        .btn-goed { background: #238636; }
+        .btn-fout { background: #da3633; }
+
+        #footer-controls {
+            position: fixed; bottom: 0; width: 100%;
+            background: rgba(28, 28, 28, 0.95); padding: 15px;
+            border-top: 1px solid #333; z-index: 200; box-sizing: border-box;
+        }
+        .mode-selector { display: flex; background: #1a1a1a; padding: 4px; border-radius: 10px; margin-bottom: 10px; }
+        .button-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+        .optie-btn { padding: 12px 0; background: #2d2d2d; color: #aaa; border: 1px solid #444; border-radius: 8px; font-size: 11px; cursor: pointer; }
+        .optie-btn.active { border-color: #58a6ff; background: #234d77; color: white; }
+        .start-btn-big { padding: 18px; font-size: 22px; font-weight: bold; background: #238636; color: white; border: none; border-radius: 12px; width: 100%; cursor: pointer; }
+
+        #eind-scherm {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #0b0f19; display: none; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 1000;
+        }
+        #woorden-wolk-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            padding: 20px; box-sizing: border-box; display: flex; flex-wrap: wrap; 
+            justify-content: center; align-content: flex-start; gap: 8px; opacity: 0.3;
+        }
+        .wolk-woord { color: #aaa; padding: 4px 8px; font-size: 16px; }
+
+        .eind-box {
+            z-index: 1100; background: #1c2128; padding: 30px; border-radius: 20px; 
+            text-align: center; border: 1px solid #444; max-width: 80%;
+        }
+        #eind-verzameling {
+            display: flex; flex-wrap: wrap; justify-content: center;
+            gap: 10px; margin: 15px 0; font-size: 30px;
+        }
+        #eind-tijd-display { color: #58a6ff; font-weight: bold; font-size: 1.2rem; margin-bottom: 10px; }
+
+        #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1200; display: none; }
+        #ruler { position: absolute; visibility: hidden; height: auto; width: auto; white-space: nowrap; font-size: 16vw; font-weight: 800; }
+    </style>
+</head>
+<body>
+
+    <div id="stars-container"></div>
+    <div id="reward-container"></div>
+    <canvas id="confetti-canvas"></canvas>
+    <div id="ruler"></div>
+
+    <div id="top-bar">
+        <div class="top-column align-left">
+            <button class="icon-btn" onclick="toggleFS()">Volledig ⛶</button>
+            <button class="icon-btn" onclick="location.reload()">Reset ⟳</button>
+        </div>
+        
+        <div class="top-column align-center">
+            <div id="timer-display">00:00</div>
+            <div class="mini-settings">
+                <span>Flits: <input type="number" id="input-ms" value="1000"> ms</span>
+                <span>Tijd: <input type="number" id="min-in" value="10"> min</span>
+            </div>
+            <button id="stop-knop" onclick="stopSpel(true)" style="display:none;">STOP SPEL</button>
+        </div>
+
+        <div class="top-column align-right">
+            <div id="reward-counter" class="stat-box">🎁: 0 / 50</div>
+            <div id="word-counter-display" class="stat-box">Woorden: 0</div>
+        </div>
+    </div>
+
+    <div id="main-content">
+        <div id="woord-groep">
+            <div id="prog-top" class="progress-wrapper"><div class="progress-bar"><span class="progress-arrow">→</span></div></div>
+            <div id="woord">---</div>
+            <div id="prog-bot" class="progress-wrapper"><div class="progress-bar"><span class="progress-arrow">→</span></div></div>
+        </div>
+        <button id="btn-herhaal" onclick="herhaalWoord()">toon woord nog een keer</button>
+        <div id="actie-container">
+            <button id="btn-goed" class="toets-btn btn-goed" onclick="toetsAntwoord(true)">GOED</button>
+            <button id="btn-fout" class="toets-btn btn-fout" onclick="toetsAntwoord(false)">FOUT</button>
+        </div>
+    </div>
+
+    <div id="eind-scherm">
+        <div id="woorden-wolk-container"></div>
+        <div class="eind-box">
+            <h1 id="eind-titel">Klaar!</h1>
+            <div id="eind-tijd-display"></div>
+            <div id="eind-verzameling"></div>
+            <p id="eind-resultaat" style="font-size: 1.5rem;"></p>
+            <button class="start-btn-big" onclick="location.reload()">Opnieuw</button>
+        </div>
+    </div>
+    
+    <div id="footer-controls">
+        <div class="mode-selector" id="mode-box">
+            <button id="m-n" class="optie-btn active" style="flex:1; border:none;" onclick="switchMode('normaal')">NORMAAL</button>
+            <button id="m-t" class="optie-btn" style="flex:1; border:none;" onclick="switchMode('toets')">TOETS</button>
+        </div>
+        <div class="button-grid" id="lijst-box">
+            <button class="optie-btn active" onclick="setLijst('kort', this)">Kort</button>
+            <button class="optie-btn" onclick="setLijst('bd', this)">B / D</button>
+            <button class="optie-btn" onclick="setLijst('lang', this)">5 Letter</button>
+            <button class="optie-btn" onclick="setLijst('klanken', this)">Klanken</button>
+        </div>
+        <button id="start-btn-main" class="start-btn-big" onclick="startNieuwWoord()">START</button>
+    </div>
+
+    <script>
+        const origineleIcoontjes = ["🚀", "💎", "🍎", "👾", "🦄", "🦁", "🦖", "🍦", "🍕", "⚽", "🚗", "🚁", "🎈", "🎁", "🎨", "🎸", "🦒", "🐘", "🐧", "🐢", "🍩", "🍔", "🍿", "🍓", "🍉", "🌈", "☀️", "🌙", "⭐", "⚡", "🚲", "🚢", "🚜", "🚒", "🚑", "🛸", "🤖", "👻", "👑", "🍭", "🦋", "🐝", "🐳", "🐵", "🐼", "🥨", "🥇", "🛹", "🎮", "🧸"];
+        let beschikbareIcoontjes = [...origineleIcoontjes];
+        let verdiendeLijst = [];
+
+        const lijsten = {
+            kort: ["de", "het", "een", "aap", "bak", "bal", "bes", "bok", "bom", "bos", "dag", "dam", "den", "dik", "dop", "fles", "gum", "haan", "heg", "hek", "hok", "hut", "jas", "kam", "kan", "kar", "kat", "kip", "koe", "koek", "kop", "lam", "les", "lip", "lot", "maan", "man", "mat", "mes", "mug", "mus", "nat", "nek", "net", "oom", "oog", "oor", "pan", "pen", "pop", "put", "raam", "rek", "rem", "rok", "rol", "roos", "sap", "sok", "tak", "tas", "ton", "top", "val", "vat", "ver", "vis", "vos", "wal", "web", "weg", "wig", "wip", "wol", "zak", "zee", "zeep", "zon"],
+            bd: ["bak", "bal", "bas", "bel", "bes", "bij", "bik", "bil", "bok", "bol", "bom", "bos", "bus", "boot", "bank", "berg", "bril", "boek", "boos", "boom", "dag", "dal", "dam", "dan", "dat", "dek", "den", "denk", "der", "des", "dik", "dip", "dit", "doe", "dof", "dog", "dok", "dol", "don", "dop", "dor", "dot", "dorp", "doos", "duif", "dier", "duur", "droom", "drop"],
+            lang: ["blauw", "brief", "brood", "vloer", "feest", "fruit", "groen", "groot", "klein", "krant", "plant", "prijs", "schat", "schip", "slang", "stoel", "stout", "tafel", "trein", "vlieg", "vraag", "vrouw", "water", "zwart", "stuur", "staart", "snoep", "schelp", "schaap"],
+            klanken: ["buik", "duif", "huis", "muis", "tuin", "vuist", "uil", "ruit", "snuit", "spruit", "kluis", "struik", "deur", "neus", "reus", "jeuk", "beuk", "kleur", "geur", "steun", "deuk", "leuk", "speur", "pauw", "saus", "touw", "woud", "koud", "zout", "mouw", "bouw", "kauw", "paus", "kous", "bout", "pijp", "wijk", "trein", "geit", "klei", "ei", "bij", "rijst", "ijs", "meid", "reis", "zeil", "dweil", "prijs", "dier", "mier", "bier", "voet", "boek", "koek", "zoek", "soep", "doel", "doos", "stoel", "koel", "vlieg", "riet", "wiel", "dief", "hoed", "doek"]
+        };
+
+        let mode = 'normaal', huidigeLijst = lijsten.kort, uniekeToetsLijst = [], woordenTeller = 0, goedTeller = 0;
+        let timerGestart = false, interval, resterendeTijd = 600, geschiedenis = [];
+        let startTijdMS = 0, huidigFlitsWoord = "";
+
+        function generateStars() {
+            const container = document.getElementById('stars-container');
+            for (let i = 0; i < 60; i++) {
+                const s = document.createElement('div');
+                const sizes = ['sm', 'md', 'lg'];
+                s.className = `star ${sizes[Math.floor(Math.random()*3)]}`;
+                s.style.left = Math.random() * 100 + 'vw';
+                s.style.top = Math.random() * 100 + 'vh';
+                s.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                s.style.animationDelay = Math.random() * 5 + 's';
+                container.appendChild(s);
+            }
+        }
+
+        function toggleFS() {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+            else if (document.exitFullscreen) document.exitFullscreen();
+        }
+
+        function switchMode(m) {
+            if (timerGestart && mode === 'toets') return;
+            if (timerGestart && mode === 'normaal' && m === 'toets') {
+                clearInterval(interval);
+                document.getElementById('timer-display').style.opacity = '0';
+                woordenTeller = 0;
+                goedTeller = 0;
+                uniekeToetsLijst = [...huidigeLijst].sort(() => Math.random() - 0.5);
+                document.getElementById('start-btn-main').innerText = "START TOETS";
+            }
+            mode = m;
+            document.getElementById('m-n').classList.toggle('active', m === 'normaal');
+            document.getElementById('m-t').classList.toggle('active', m === 'toets');
+            if (mode === 'toets') { 
+                document.getElementById('reward-counter').innerText = `Woord: 0 / 50`;
+                document.getElementById('word-counter-display').style.display = 'none';
+            } else { 
+                document.getElementById('reward-counter').innerText = `🎁: 0 / 50`;
+                document.getElementById('word-counter-display').style.display = 'block';
+            }
+        }
+
+        function setLijst(l, btn) {
+            if (timerGestart && mode === 'toets') return;
+            huidigeLijst = lijsten[l];
+            document.querySelectorAll('#lijst-box .optie-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            if (timerGestart && mode === 'toets') uniekeToetsLijst = [...huidigeLijst].sort(() => Math.random() - 0.5);
+        }
+
+        function updateTimerDisplay() {
+            const min = Math.floor(resterendeTijd / 60);
+            const sec = resterendeTijd % 60;
+            document.getElementById('timer-display').innerText = 
+                `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+        }
+
+        function updateCounters() {
+            if (mode === 'normaal') {
+                document.getElementById('word-counter-display').innerText = `Woorden: ${woordenTeller}`;
+            }
+        }
+
+        function startNieuwWoord() {
+            if (!timerGestart && mode === 'toets') { uniekeToetsLijst = [...huidigeLijst].sort(() => Math.random() - 0.5); }
+            if (mode === 'toets') {
+                document.getElementById('mode-box').style.pointerEvents = 'none';
+                document.getElementById('mode-box').style.opacity = '0.5';
+                if (uniekeToetsLijst.length === 0 || woordenTeller >= 50) { stopSpel(); return; }
+                huidigFlitsWoord = uniekeToetsLijst.pop();
+                document.getElementById('reward-counter').innerText = `Woord: ${woordenTeller + 1} / 50`;
+            } else {
+                huidigFlitsWoord = huidigeLijst[Math.floor(Math.random() * huidigeLijst.length)];
+            }
+            geschiedenis.push(huidigFlitsWoord);
+            document.getElementById('btn-herhaal').style.display = 'none';
+            toonWoord(huidigFlitsWoord);
+        }
+
+        function toonWoord(w) {
+            const ms = parseInt(document.getElementById('input-ms').value) || 1000;
+            const ruler = document.getElementById('ruler');
+            ruler.innerText = w;
+            const wordWidth = ruler.offsetWidth;
+            document.querySelectorAll('.progress-wrapper').forEach(p => p.style.width = (wordWidth + 20) + 'px');
+
+            if (!timerGestart) {
+                timerGestart = true;
+                startTijdMS = Date.now();
+                document.getElementById('stop-knop').style.display = 'block';
+                if (mode === 'normaal') {
+                    resterendeTijd = (parseInt(document.getElementById('min-in').value) || 10) * 60;
+                    document.getElementById('timer-display').style.opacity = '1';
+                    updateTimerDisplay();
+                    interval = setInterval(() => { 
+                        resterendeTijd--; 
+                        updateTimerDisplay();
+                        if(resterendeTijd <= 0) stopSpel(); 
+                    }, 1000);
+                }
+            }
+            
+            document.getElementById('woord').innerText = w;
+            document.getElementById('start-btn-main').disabled = true;
+            document.getElementById('btn-goed').style.display = 'none';
+            document.getElementById('btn-fout').style.display = 'none';
+            document.querySelectorAll('.progress-wrapper').forEach(wrapper => wrapper.style.visibility = 'visible');
+            
+            document.querySelectorAll('.progress-bar').forEach(b => {
+                b.style.animation = 'none'; b.offsetHeight;
+                b.style.animation = `fillProgress ${ms}ms linear forwards`;
+            });
+
+            setTimeout(() => {
+                document.getElementById('woord').innerText = ""; 
+                document.querySelectorAll('.progress-wrapper').forEach(wrapper => wrapper.style.visibility = 'hidden');
+                if (mode === 'normaal') {
+                    document.getElementById('btn-herhaal').style.display = 'block';
+                    woordenTeller++;
+                    updateCounters();
+                    if (woordenTeller % 10 === 0) spawnReward();
+                    document.getElementById('start-btn-main').disabled = false;
+                    document.getElementById('start-btn-main').innerText = "VOLGENDE";
+                } else {
+                    document.getElementById('btn-goed').style.display = 'block';
+                    document.getElementById('btn-fout').style.display = 'block';
+                }
+            }, ms);
+        }
+
+        function toetsAntwoord(goed) {
+            woordenTeller++;
+            if (goed) goedTeller++;
+            document.getElementById('btn-goed').style.display = 'none';
+            document.getElementById('btn-fout').style.display = 'none';
+            document.getElementById('start-btn-main').disabled = false;
+            document.getElementById('start-btn-main').innerText = "VOLGENDE";
+            if (woordenTeller >= 50 || uniekeToetsLijst.length === 0) stopSpel();
+        }
+
+        function herhaalWoord() {
+            document.getElementById('btn-herhaal').style.display = 'none';
+            document.getElementById('woord').innerText = huidigFlitsWoord;
+        }
+
+        function stopSpel(isHandmatig = false) {
+            const verstrekenTijdMS = Date.now() - startTijdMS;
+            const totaalSec = Math.floor(verstrekenTijdMS / 1000);
+            const m = Math.floor(totaalSec / 60), s = totaalSec % 60;
+            clearInterval(interval);
+            document.getElementById('timer-display').style.opacity = '0';
+            if (isHandmatig && mode === 'toets' && woordenTeller < 50) { location.reload(); return; }
+            const verzameling = document.getElementById('eind-verzameling');
+            verzameling.innerHTML = verdiendeLijst.join(' ');
+            document.getElementById('eind-tijd-display').innerText = `Oefentijd: ${m}m ${s}s`;
+            const wolk = document.getElementById('woorden-wolk-container');
+            wolk.innerHTML = '';
+            geschiedenis.forEach(w => {
+                const span = document.createElement('span'); span.className = 'wolk-woord'; span.innerText = w;
+                wolk.appendChild(span);
+            });
+            document.getElementById('eind-scherm').style.display = 'flex';
+            document.getElementById('eind-resultaat').innerText = mode === 'toets' 
+                ? `Score: ${goedTeller} / ${woordenTeller} goed` 
+                : `Je hebt ${woordenTeller} woorden geoefend!`;
+            if (mode === 'normaal' || (mode === 'toets' && woordenTeller >= 50)) startConfetti();
+        }
+
+        function spawnReward() {
+            if (beschikbareIcoontjes.length === 0) return;
+            const container = document.getElementById('reward-container');
+            const icoon = document.createElement('div');
+            icoon.className = 'beloning-icoon';
+            const index = Math.floor(Math.random() * beschikbareIcoontjes.length);
+            const gekozenIcoon = beschikbareIcoontjes.splice(index, 1)[0];
+            verdiendeLijst.push(gekozenIcoon);
+            icoon.innerText = gekozenIcoon;
+            document.getElementById('reward-counter').innerText = `🎁: ${verdiendeLijst.length} / 50`;
+            
+            const topBarH = document.getElementById('top-bar').offsetHeight;
+            const footerH = document.getElementById('footer-controls').offsetHeight;
+            const safeW = window.innerWidth;
+            const safeH = window.innerHeight;
+
+            const woordGroep = document.getElementById('woord-groep');
+            const rect = woordGroep.getBoundingClientRect();
+            
+            const margin = 10;
+            const minX = rect.left - margin;
+            const maxX = rect.right + margin;
+            const minY = rect.top - margin;
+            const maxY = rect.bottom + margin;
+
+            let x, y, collision = true, attempts = 0;
+            while(collision && attempts < 200) {
+                attempts++;
+                x = Math.random() * (safeW - 60);
+                y = Math.random() * (safeH - topBarH - footerH - 60) + topBarH;
+                const hitX = x + 40 > minX && x < maxX;
+                const hitY = y + 40 > minY && y < maxY;
+                if (!(hitX && hitY)) collision = false;
+            }
+            icoon.style.left = x + 'px'; 
+            icoon.style.top = y + 'px';
+            container.appendChild(icoon);
+        }
+
+        function startConfetti() {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.style.display = 'block';
+            const resizeCanvas = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            const particles = Array.from({ length: 200 }, () => ({
+                x: Math.random() * canvas.width, y: Math.random() * canvas.height - canvas.height, 
+                w: Math.random() * 8 + 6, h: Math.random() * 12 + 8, color: `hsl(${Math.random() * 360}, 100%, 60%)`, 
+                vx: Math.random() * 4 - 2, vy: Math.random() * 5 + 2, rotation: Math.random() * 360, 
+                rVel: Math.random() * 10 - 5, wMod: Math.random() * 2 
+            }));
+            let recycling = true, active = true;
+            function draw() {
+                if (!active) return;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => {
+                    if (p.y > canvas.height + 20) { if (recycling) { p.y = -Math.random() * 50 - 20; p.x = Math.random() * canvas.width; } else return; }
+                    p.y += p.vy; p.x += p.vx; p.rotation += p.rVel;
+                    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rotation * Math.PI / 180);
+                    ctx.fillStyle = p.color; ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h); ctx.restore();
+                });
+                requestAnimationFrame(draw);
+            }
+            setTimeout(() => { recycling = false; }, 8000);
+            draw();
+        }
+
+        generateStars();
+    </script>
+</body>
+</html>
